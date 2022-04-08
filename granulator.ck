@@ -198,6 +198,8 @@ public class Granulator {
         // args are sample value and sample index
         // (dur must be integral in samples)
         lisa.valueAt( buffy.valueAt(i  * buffy.channels()), i::samp );
+        // if (i % 10 == 0) {1::samp => now;}  // BUG FIX: stop the clicking, give time to dump buffer
+        // if (i % 20 == 0) {1::samp => now;}  // try to load twice as fast
     }
 
     // set LiSa parameters

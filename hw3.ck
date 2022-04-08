@@ -91,16 +91,8 @@ spork ~ step_seq(seqman);
 
 
 fun void add_seq(string filepath, int idx, float gain, float off, float deg) {
-  if (idx > seq_grans.cap()-1) {
-    Granulator @ n_seq_grans[idx+1];
-    for (int i; i < seq_grans.cap(); i++) {
-      seq_grans[i] @=> n_seq_grans[i];
-    }
-    n_seq_grans @=> seq_grans;
-  }
+  // initialize new sequencer
   Granulator seq_gran;
-  seq_gran @=> seq_grans[idx];
-  /* seq_gran.init(filepath, SEQ_TYPE, BUFFS[filepath]); */
   seq_gran.init(filepath, SEQ_TYPE);
   off => seq_gran.GRAIN_PLAY_RATE_OFF;
   gain => seq_gran.lisa.gain;
@@ -115,6 +107,18 @@ fun void add_seq(string filepath, int idx, float gain, float off, float deg) {
   );
   spork ~ seq_gran.cycle_pos();
   spork ~ seq_gran.granulate();
+
+  // add sequencer to global sequencers array
+  if (idx > seq_grans.cap()-1) {
+    Granulator @ n_seq_grans[idx+1];  // allocate new sequencers array
+    for (int i; i < seq_grans.cap(); i++) {
+      seq_grans[i] @=> n_seq_grans[i];
+    }
+    seq_gran @=> n_seq_grans[idx];  // add new granulator
+    n_seq_grans @=> seq_grans;  // reassign global sequencers pointer
+  } else {
+    seq_gran @=> seq_grans[idx];
+  }
 }
 
 
