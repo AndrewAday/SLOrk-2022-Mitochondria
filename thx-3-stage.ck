@@ -2,10 +2,10 @@
 .10 => float stage1start;
 .55 => float stage1end;
 .68 => float stage2start;
-.93 => float stage2end;
+.97 => float stage2end;
 
 // how long stage 2 needs to be held before forcing stage3
-5::second => dur stage2holdThreshold;
+7.5::second => dur stage2holdThreshold;
 0::second => dur stage2consecutiveHold; 
 10::second => dur stage3lerpTime;  // how long to resolve from stage2 --> stage3
 
@@ -180,8 +180,10 @@ fun void heartbeat_pattern() {
     }
     // Math.random2(0, E.cap()-1) => int idx1;
     // Math.random2(0, E.cap()-1) => int idx2;
+
+    // TODO: does this need to be networked synced with other drums?
     td.play_heartbeat_pattern(td.bpm_to_qt_note(92), E[3], E[3], 1);
-    /* <<< "idx1: ", idx1, " idx2: ", idx2 >>>; */
+
   }
 } spork ~ heartbeat_pattern();
 
@@ -189,7 +191,7 @@ fun void stage1_drum_pattern() {
   while (true) {
     if (inStage1) {
       td.play_oneshot(heartbeat[0]);
-      td.bpm_to_qt_note(60) => now;
+      td.bpm_to_qt_note(60) => now;  // does this need to be networked synced with other drums?
     } else if (aboveStage1 && !inStage2) {
       td.play_oneshot(heartbeat[0]);
       td.bpm_to_qt_note(beat_bpm) => now;  // accelerate to 92bpm
@@ -316,6 +318,14 @@ while (true) {
     for (0 => int i; i < numVoices; i++) {
       newGain => gains[i].gain;
     }
+    
+    if (gt.GetCombinedZ() < .05) {
+      td.play_oneshot(heartbeat[0]);
+      break;  // exit
+    }
+
   }
   15::ms => now;
 }
+
+5::second => now;

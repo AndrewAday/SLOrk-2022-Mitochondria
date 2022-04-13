@@ -103,7 +103,7 @@ public class GameTrack {
     <<< "joystick '" + trak.name() + "' ready", "" >>>;
 
     spork ~ this.gametrak();
-    calibrateZ();
+    // calibrateZ();
   }
 
   // computes Z offsets so z axis is 0 at rest

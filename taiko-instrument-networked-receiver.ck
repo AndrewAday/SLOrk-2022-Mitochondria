@@ -39,12 +39,12 @@ spork ~ generativeMode("/taiko/qt_note_quintuplet", C, gt.RZ, (2.0/5.0)*qt_note)
 spork ~ generativeMode("/taiko/qt_note", A, gt.LZ, qt_note);
 spork ~ generativeMode("/taiko/qt_note_triplet", B, gt.RZ, (2.0/3.0)*qt_note);
 
+spork ~ manualMode(A, B);
+// spork ~ manualMode(E, C);
+
 // button selects mode
 while( true )
 {
-    if( !gt.buttonToggle ){
-        manualMode();
-    }
     10::ms => now;
 }
 
@@ -69,6 +69,8 @@ fun void generativeMode(string address, LiSa lisas[], int z_idx, dur beat_dur) {
         }
 
         gt.curAxis[z_idx] => float z;
+
+        <<< z >>>;
 
         if (z < TIER_1) {
             <<< "tier 1" >>>;
@@ -100,56 +102,63 @@ fun void generativeMode(string address, LiSa lisas[], int z_idx, dur beat_dur) {
 }
 
 // default mode is manual one-hit
-fun void manualMode(){
+fun void manualMode(LiSa l_lisas[], LiSa r_lisas[]){
     // gt.print();
-    if( gt.curAxis[gt.RZ] > .1 )
-    {
-        // right forward punch
-        if( gt.curAxis[gt.RY] > 0.5 && debounceRZ == 0 ) 
-        {
-            // <<<"BANG!">>>;
-            1 => debounceRZ;
-            td.play_oneshot( A[Math.random2(0,A.size()-1)] );
-        }  
-        if( gt.curAxis[gt.RY] < 0.5 ) 
-        {
-            0 => debounceRZ;
+    while (true) {
+        10::ms => now;
+        if (gt.buttonToggle) {
+            continue;
         }
-        // right right punch
-        if( gt.curAxis[gt.RX] > 0.3 && debounceRR == 0 )
+
+        if( gt.curAxis[gt.RZ] > .1 )
         {
-            1 => debounceRR;
-            td.play_oneshot( A[Math.random2(0,A.size()-1)] );
+            // right forward punch
+            if( gt.curAxis[gt.RY] > 0.5 && debounceRZ == 0 ) 
+            {
+                // <<<"BANG!">>>;
+                1 => debounceRZ;
+                td.play_oneshot( r_lisas[Math.random2(0,r_lisas.size()-1)] );
+            }  
+            if( gt.curAxis[gt.RY] < 0.5 ) 
+            {
+                0 => debounceRZ;
+            }
+            // right right punch
+            if( gt.curAxis[gt.RX] > 0.3 && debounceRR == 0 )
+            {
+                1 => debounceRR;
+                td.play_oneshot( r_lisas[Math.random2(0,r_lisas.size()-1)] );
+            }
+            if( gt.curAxis[gt.RX] < 0.3 ) 
+            {
+                0 => debounceRR;
+            }
         }
-        if( gt.curAxis[gt.RX] < 0.3 ) 
+        if( gt.curAxis[gt.LZ] > .1 )
         {
-            0 => debounceRR;
-        }
+            // left forward punch
+            if( gt.curAxis[gt.LY] > 0.5 && debounceLZ == 0 ) 
+            {
+                1 => debounceLZ;
+                td.play_oneshot( l_lisas[Math.random2(0,l_lisas.size()-1)] );
+            }  
+            if( gt.curAxis[gt.LY] < 0.5 ) 
+            {
+                0 => debounceLZ;
+            }
+            // left left punch
+            if( gt.curAxis[gt.LX] < -0.3 && debounceLL == 0 )
+            {
+                <<<"BANG!">>>;
+                1 => debounceLL;
+                td.play_oneshot( l_lisas[Math.random2(0,l_lisas.size()-1)] );
+            }
+            if( gt.curAxis[gt.LX] > -0.3 ) 
+            {
+                0 => debounceLL;
+            }
+        }   
     }
-    if( gt.curAxis[gt.LZ] > .1 )
-    {
-        // left forward punch
-        if( gt.curAxis[gt.LY] > 0.5 && debounceLZ == 0 ) 
-        {
-            1 => debounceLZ;
-            td.play_oneshot( B[Math.random2(0,B.size()-1)] );
-        }  
-        if( gt.curAxis[gt.LY] < 0.5 ) 
-        {
-            0 => debounceLZ;
-        }
-        // left left punch
-        if( gt.curAxis[gt.LX] < -0.3 && debounceLL == 0 )
-        {
-            <<<"BANG!">>>;
-            1 => debounceLL;
-            td.play_oneshot( B[Math.random2(0,B.size()-1)] );
-        }
-        if( gt.curAxis[gt.LX] > -0.3 ) 
-        {
-            0 => debounceLL;
-        }
-    }   
 }
 
 

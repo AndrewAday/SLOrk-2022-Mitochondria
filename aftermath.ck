@@ -93,6 +93,7 @@ fun float get_grain_gain(float z) {
 
 // controls granular synthesis mapping to gametrak, + cross fade to voice
 .025 => float Z_DEADZONE_CUTOFF;
+.35 => float Z_BEGIN_VOICE;
 fun void field_voice_crossfader( 
   int x, int y, int z, 
   Granulator @ granulator, Gain @ field_gain,
@@ -110,10 +111,12 @@ fun void field_voice_crossfader(
     if (gt.curAxis[z] < Z_DEADZONE_CUTOFF) {
       0 => voice_gain.gain;
       Util.clamp01(Util.remap(.0, Z_DEADZONE_CUTOFF, 0, 1, gt.curAxis[z])) => field_gain.gain;
+    } else if (gt.curAxis[z] >= Z_DEADZONE_CUTOFF && gt.curAxis[z] < Z_BEGIN_VOICE) {
+      // hold field sample at gain = 1, voice at gain = 0
     } else { 
       // at z = 0, r_field_gain = 1, r_voice_gain = 0
       // at z = .5, r_field_gain = 0, r_voice_gain = 1
-      Util.clamp01(Util.remap(Z_DEADZONE_CUTOFF, .5, 1, 0, gt.curAxis[z])) => field_gain.gain;
+      Util.clamp01(Util.remap(Z_BEGIN_VOICE, .5, 1, 0, gt.curAxis[z])) => field_gain.gain;
       (1 - field_gain.gain()) * 3.0 => voice_gain.gain;
     }
     
