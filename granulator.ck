@@ -49,7 +49,11 @@ public class Granulator {
     }
     // load file into a LiSa (use one LiSa per sound)
     filepath => this.sample;
-    this.load("Samples/Drones/"+filepath) @=> this.lisa;
+    if (type == "field") {
+      this.load("Samples/Field/"+filepath) @=> this.lisa;
+    } else {
+      this.load("Samples/Drones/"+filepath) @=> this.lisa;
+    }
 
     PoleZero p @=> this.blocker;
     NRev r @=> this.reverb;
@@ -62,9 +66,28 @@ public class Granulator {
     // patch it
     if (type == "sequencer") {
       this.lisa.chan(0) => this.blocker => this.adsr => this.reverb => dac;
-    } else if (type == "drone") {
+    } else if (type == "drone" || type == "field") {
       this.lisa.chan(0) => this.blocker => this.reverb => dac;
     }
+  }
+
+  fun void init(string filepath, UGen @ out) {
+    // load file into a LiSa (use one LiSa per sound)
+    filepath => this.sample;
+    this.load(filepath) @=> this.lisa;
+
+    PoleZero p @=> this.blocker;
+    // NRev r @=> this.reverb;
+    // ADSR e @=> this.adsr;
+
+    // reverb mix
+    // .05 => this.reverb.mix;
+
+    // pole location to block DC and ultra low frequencies
+    .99 => this.blocker.blockZero;
+
+    // patch it
+    this.lisa.chan(0) => this.blocker => out;
   }
 
   fun void init(string filepath) {
@@ -92,7 +115,7 @@ public class Granulator {
     while (true) {
       1 - (.5 + .4 * Math.cos(2*pi*(now/second)/T)) => this.GRAIN_POSITION;
       100::ms => now;
-      /* <<< this.GRAIN_POSITION >>>; */
+      <<< this.GRAIN_POSITION >>>;
     }
   }
 
