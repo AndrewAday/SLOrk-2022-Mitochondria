@@ -6,7 +6,7 @@ public class TaikoDrummer {
       int num_beats;
   }
 
-  fun dur bpm_to_qt_note(float bpm) {
+  fun static dur bpm_to_qt_note(float bpm) {
     return (60. / (bpm))::second;
   }
 
@@ -181,7 +181,7 @@ td.bpm_to_qt_note(86) => dur qt_note;
 2 => int REPEATS_PER_CYCLE;
 
 <<< "generative pattern" >>>;
-repeat (10) {
+repeat (0) {
 
 spork ~ td.play_drum_pattern(
   A,

@@ -28,6 +28,7 @@ public class GameTrack {
 
   // button
   false => int buttonDown;
+  false => int buttonToggle;
 
   /* ======== Events ======== */
   /*
@@ -175,6 +176,9 @@ public class GameTrack {
               // joystick button down
               else if( msg.isButtonDown() )
               {
+                  if (!buttonDown) {
+                    !buttonToggle => buttonToggle;
+                  }
                   true => this.buttonDown;
                   <<< "button", msg.which, "down" >>>;
               }

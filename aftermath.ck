@@ -14,10 +14,22 @@ Gain main_gain => dac;
 Gain l_field_gain; Gain l_voice_gain;
 Gain r_field_gain; Gain r_voice_gain;
 
+Chorus chorus => NRev rev => main_gain;
+// rev settings
+.3 => rev.mix;
+
+// chorus settings
+.75 => chorus.mix;
+.2 => chorus.modFreq;
+.08 => chorus.modDepth;
+
 l_field_gain => main_gain;
-l_voice_gain => main_gain;
 r_field_gain => main_gain;
-r_voice_gain => main_gain;
+
+l_voice_gain => chorus;
+r_voice_gain => chorus;
+
+
 
 .0 => l_field_gain.gain; .0 => l_voice_gain.gain;
 .0 => r_field_gain.gain; .0 => r_voice_gain.gain;
