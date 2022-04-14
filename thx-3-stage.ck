@@ -169,6 +169,7 @@ false => int inStage2; // true when inside stage2 chord zone
 false => int aboveStage1;  // true when position > stage1 end
 false => int inStage3;
 60.0 => float beat_bpm;
+86.0 => float heartbeat_bpm;
 
 
 // heartbeat pattern
@@ -182,7 +183,8 @@ fun void heartbeat_pattern() {
     // Math.random2(0, E.cap()-1) => int idx2;
 
     // TODO: does this need to be networked synced with other drums?
-    td.play_heartbeat_pattern(td.bpm_to_qt_note(92), E[3], E[3], 1);
+    // td.play_heartbeat_pattern(td.bpm_to_qt_note(92), E[3], E[3], 1);
+    td.play_heartbeat_pattern(td.bpm_to_qt_note(heartbeat_bpm), E[3], E[3], 1);
 
   }
 } spork ~ heartbeat_pattern();
@@ -297,6 +299,7 @@ now => time startStage3;
 startStage3 + stage3lerpTime => time enterStage3;
 while (true) {
   if (now <= enterStage3) {
+    // lerp voice freq
     for (0 => int i; i < numVoices; i++) {
       Util.remap(
         startStage3, enterStage3,
@@ -304,6 +307,12 @@ while (true) {
         now
       ) => voices[i].freq;
     }
+    // lerp heartbeat bpm
+    Util.remap(
+      startStage3, enterStage3,
+      86.0, 160.0, 
+      now
+    ) => heartbeat_bpm;
 
     Util.printLerpProgress(Util.invLerp(startStage3, enterStage3, now));
   } else {

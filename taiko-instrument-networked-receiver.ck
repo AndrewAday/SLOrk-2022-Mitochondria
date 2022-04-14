@@ -1,8 +1,15 @@
+2 => int NUM_CHANS;
+
 // taiko drummer 
 TaikoDrummer td;
-JCRev rev => Gain drummerGain => dac;
+JCRev rev => Gain drummerGain;
 .05 => rev.mix;
 .5 => drummerGain.gain;
+
+// connect to dac
+for (0 => int i; i < NUM_CHANS; i++) {
+    drummerGain => dac.chan(i);
+}
 
 LiSa A[9];
 LiSa B[4];
