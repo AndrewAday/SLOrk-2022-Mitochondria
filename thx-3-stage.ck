@@ -1,13 +1,13 @@
 /* =============== CONSTANTS =============== */
 .10 => float stage1start;
-.55 => float stage1end;
-.68 => float stage2start;
-.97 => float stage2end;
+.45 => float stage1end;
+.58 => float stage2start;
+.99 => float stage2end;
 
 // how long stage 2 needs to be held before forcing stage3
-7.5::second => dur stage2holdThreshold;
+2::second => dur stage2holdThreshold;
 0::second => dur stage2consecutiveHold; 
-10::second => dur stage3lerpTime;  // how long to resolve from stage2 --> stage3
+2::second => dur stage3lerpTime;  // how long to resolve from stage2 --> stage3
 
 // 6 => int NUM_CHANNELS;
 2 => int NUM_CHANNELS;
@@ -58,10 +58,29 @@ D3 * .5 => float D2;
 
 // stage 3 chord
 [
-  F3 * 2, A3 * 2, Cs4 * 2,  // aug on A 
-  Bb3 * .5, D3, Fs3,  // aug on D
-  Eb3 * .25, G3 * .25, B3 * .25 // aug on G
+  Cs4 * 2,
+  A3 * 2,
+  F3 * 2,    // aug on A 
+  Fs3,
+  D3,
+  Bb3 * .5,    // aug on D
+  B3 * .25,
+  G3 * .25,
+  Eb3 * .25   // aug on G
 ] @=> float stage3chord[];
+
+
+[  // big dmin
+  D3 * 4,
+  A3 * 2, 
+  F3 * 2, 
+  D3 * 2, 
+  D3,
+  D3 * .5,
+  A3 * .25, 
+  F3 * .25, 
+  D3 * .25
+] @=> float stage4chord[];
 
 
 /* =============== UTIL =============== */
@@ -92,6 +111,7 @@ fun void pwm(int idx, PulseOsc @ p, LPF @ l, Gain @ g, float wf, float lf, float
 
 
 
+
 /* =============== Setup =============== */
 // GameTrak HID
 GameTrack gt;
@@ -102,9 +122,7 @@ TaikoDrummer td;
 Gain drumGain;
 
   // TODO: fix signal flow, route drums and voices through single main gain, which branches to dac
-for (int i; i < NUM_CHANNELS; i++) {
-   drumGain => dac.chan(i);
-}
+patch_to_hemi(drumGain);
 0.0 => drumGain.gain;
 
 LiSa heartbeat[1];
@@ -116,20 +134,30 @@ for (int i; i < 4; i++) {
   .5 => E[i].gain;
 }
 
+fun void patch_to_hemi(UGen @ u) {
+  for (int i; i < NUM_CHANNELS; i++) {
+    u => dac.chan(i);
+  }
+}
+
 // connect UGens
 stage3chord.size() => int numVoices;
 PulseOsc voices[numVoices];
 LPF lpfs[numVoices];
 Gain gains[numVoices];
 /* Chorus chorus => NRev rev => OverDrive drive => dac; */
-Chorus chorus => NRev rev;
-for (int i; i < NUM_CHANNELS; i++) {
-   rev => dac.chan(i);
-}
+Chorus chorus => LPF mainLPF => NRev rev => Echo e1 => Echo e2;
+
+patch_to_hemi(rev);
+
+
 /* Chorus chorus => NRev rev => Fuzz fuzz => dac;  */
 
 /* .0 => fuzz.mix; */  // distortion clips :(
 /* .0 => drive.mix; */
+
+400 => mainLPF.freq;
+
 .0 => rev.mix;
 
 // chorus settings
@@ -162,6 +190,13 @@ for (0 => int i; i < numVoices; i++) {
 }
 
 
+fun void set_all_voice_gains(float g) {
+  for (0 => int i; i < numVoices; i++) {
+      g => gains[i].gain;
+  }
+}
+
+/*==========Phase 1=============*/
 
 // lerp stage 1
 false => int inStage1;  // true when inside stage1 chord
@@ -170,7 +205,6 @@ false => int aboveStage1;  // true when position > stage1 end
 false => int inStage3;
 60.0 => float beat_bpm;
 86.0 => float heartbeat_bpm;
-
 
 // heartbeat pattern
 fun void heartbeat_pattern() {
@@ -204,6 +238,32 @@ fun void stage1_drum_pattern() {
 
 } spork ~ stage1_drum_pattern();
 
+fun void update_all_voice_params(float percentage) {
+  // scale params for all voices
+  for (0 => int i; i < numVoices; i++) {
+    // voice gain
+    percentage * maxGain => gains[i].gain;
+
+    // pwm
+    percentage * .40 => pwmDepth;
+
+    // drum gain mod
+    percentage * 0.65 => drumGain.gain;
+
+    // lp freq mod
+    percentage * (5400) + 400 => fcBase;
+    ((1.0 - percentage) * .75) + .10 => fcDepth;  // inverse scale fc mod depth
+
+    // main lp
+    1.5 * percentage * (5400) + 400 => mainLPF.freq;
+
+
+    // effects mod
+    percentage * .30 => rev.mix;
+    percentage * .75 => chorus.mix;
+  }
+}
+
 while (true) {
   gt.GetXZPlaneHandDist() => float handDist;
   // <<< "handDist: ", handDist >>>;
@@ -230,27 +290,10 @@ while (true) {
     
   }
 
-  // scale params for all voices
-  for (0 => int i; i < numVoices; i++) {
-    // voice gain
-    percentage * maxGain => gains[i].gain;
+  // update voice timbres
+  update_all_voice_params(percentage * .5);   // clamped to [0, .5]
 
-    // pwm
-    percentage * .40 => pwmDepth;
-
-    // drum gain mod
-    percentage * 0.6 => drumGain.gain;
-
-    // lp freq mod
-    percentage * (5400) + 400 => fcBase;
-    ((1.0 - percentage) * .75) + .10 => fcDepth;  // inverse scale fc mod depth
-
-    // effects mod
-    percentage * .30 => rev.mix;
-    percentage * .75 => chorus.mix;
-  }
-
-  // chord stage scaling
+  // update voice pitch, drum bpm
   if (percentage < stage1start) { // hold tonic
 
   } else if (percentage >= stage1start && percentage < stage1end) {
@@ -314,6 +357,11 @@ while (true) {
       now
     ) => heartbeat_bpm;
 
+    // lerp voice timbre, percentage : [.5, .75]
+    .5 + (.25 * Util.clamp01(gt.invLerp(startStage3, enterStage3, now))) => float percentage;
+    // percentage from [.5, .75]
+    update_all_voice_params(percentage);
+
     Util.printLerpProgress(Util.invLerp(startStage3, enterStage3, now));
   } else {
     if (!inStage3) {
@@ -321,20 +369,170 @@ while (true) {
       gt.GetCombinedZ() => maxZHeight;
       <<< "entered stage3" >>>;
     }
-    // gt.print();
-    // lerp height to volume
-    maxGain * Util.clamp01(Util.invLerp(.1, maxZHeight, gt.GetCombinedZ())) => float newGain;
-    for (0 => int i; i < numVoices; i++) {
-      newGain => gains[i].gain;
-    }
+    break;
     
-    if (gt.GetCombinedZ() < .05) {
-      td.play_oneshot(heartbeat[0]);
-      break;  // exit
-    }
 
   }
   15::ms => now;
 }
 
+chout <= "=========stage 4=========" <= IO.newline();
+stage4();
+
+fun void stage4() {
+  1.15 => float resHeight;
+  .95 => float fadeHeight;
+  while (true) {
+    // lerp height to volume
+    // maxGain * Util.clamp01(Util.invLerp(.1, maxZHeight, gt.GetCombinedZ())) => float newGain;
+
+    // remap pitch
+    Util.clamp01(Util.invLerp(maxZHeight, resHeight, gt.GetCombinedZ())) => float t;
+    <<< t >>>;
+    <<< gt.GetCombinedZ() >>>;
+
+    Util.printLerpProgress(t);
+
+    // lerp pitch
+    for (0 => int i; i < numVoices; i++) {
+      Util.lerp(stage3chord[i], stage4chord[i], t) => voices[i].freq;
+      // newGain => gains[i].gain;
+    }
+
+    // lerp volume, timbre
+    .75 + (.25 * t) => float percentage;
+    // percentage from [.75, 1.0]
+    update_all_voice_params(percentage);
+    
+    if (gt.GetCombinedZ() < fadeHeight) {
+      break;  // exit stage 4
+    }
+
+    15::ms => now;
+  }
+
+  <<< "releasing stage4 chord" >>>;
+
+  // drop gains to 0
+  // .5::second => dur release;
+  // now => time relStart;
+  // release + now => time relEnd;
+  // while (now < relEnd) {
+  //   maxGain * Util.remap(relStart, relEnd, 1, 0, now) => float newGain;
+  //   for (0 => int i; i < numVoices; i++) {
+  //     newGain => gains[i].gain;
+  //   }
+  //   10::ms => now;
+  // }
+
+  // for (0 => int i; i < numVoices; i++) {
+  //     0 => gains[i].gain;
+  // }
+
+  // play ending drum
+  while (true) {
+    Util.clamp01(Util.invLerp(.2, fadeHeight, gt.GetCombinedZ())) => float t;
+    // lerp gains to 0
+    for (0 => int i; i < numVoices; i++) {
+      // sustain energy until collapse
+      // t * maxGain => gains[i].gain;
+    }
+
+    if (gt.GetCombinedZ() < .1) {
+        set_all_voice_gains(0);
+        td.play_oneshot(heartbeat[0]);
+        break;
+    }
+    10::ms => now;
+  }
+}
+
+chout <= "=========end phase 1=========" <= IO.newline();
+
 5::second => now;
+
+chout <= "=========begin phase 2=========" <= IO.newline();
+
+// phase 2 instrument.
+
+phase2();
+
+fun void phase2() {
+  // phase2 presets
+    // re-nable filter sweeping
+  .85 => fcDepth;
+    // set voices gains
+  set_all_voice_gains(.4);
+    // set mod effects
+  .8 => chorus.mix;
+  1 => rev.mix;  // HIGH reverb 
+    // echoes
+  500::ms => e1.max => e1.delay;
+  1000::ms => e2.max => e2.delay;
+  .6 => e1.gain;
+  .4 => e2.gain;
+  
+  patch_to_hemi(e2);  // connect echo to dac
+
+  
+  /*
+    continuous pitch
+      smoothed pitch interpolation?
+      different lerp rates for the 9 voices?
+    add variable delay, echo?
+    vibrato
+      - vibrato freq
+      - vibrato depth
+    tremolo
+      - freq
+      - depth
+
+    Split into 2 groups, high/right low/left, separated by an octave, each given 4-5 voices
+      - allows 2-voice counterpoint melodic line
+
+    gt button to enable saw pump (see minilogue patch, Barwick "In Light") sidechaining mode
+      - + gentle kick on the falling edge
+      - saw wave pump envelope on gain AND mainLPF cutoff
+
+    quantize z axis into d minor scale, only set a new target when the z is in
+    a new zone && the y axis is past a certain threshold
+      - upon receiving new target, lerp the voices for that joystick at different rates
+      - want to feel like moving two pulsating, entangled balls of energy.
+    
+    listen to Barwick "Flowers" -- way to add aggressive/dark rhythmic pulse
+      - square wave env on pulse width? or filter cutoff?
+      - rapid ADSR arpegiattion on/off?
+      - apply to base organ voice OR to melodic balls?
+
+    X-axis to roll/spread out voices into fifths/fourths above/below the center pitch?
+      - might be too much, keep it simple and preserve the single-line melodic quality 
+
+  */
+  while (true) {
+
+    // z axis pitch
+    Util.remap(0, 1, D3, D3 * 2, gt.curAxis[gt.LZ]) => float freq;
+    set_all_voice_freqs(freq);
+
+    // y axis gain
+    Util.remap(-1, 1, 0, .4, gt.curAxis[gt.LY]) => float gain;
+    set_all_voice_gains(gain);
+
+    10::ms => now;
+  }
+
+}
+
+fun void set_all_voice_freqs( float f )  {
+  for (0 => int i; i < numVoices; i++) {
+      f => voices[i].freq;
+  }
+}
+
+
+fun void set_all_voice_gains_random(float g) {
+  for (0 => int i; i < numVoices; i++) {
+      Math.random2f(g*.7, g*1.3) => gains[i].gain;
+  }
+}
+

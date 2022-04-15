@@ -39,8 +39,8 @@ gt.init(0);
 .6 => float TIER_2;
 
 /* player 1 */
-spork ~ generativeMode("/taiko/whole_note", E, gt.LZ, 4 * qt_note);
-spork ~ generativeMode("/taiko/qt_note_quintuplet", C, gt.RZ, (2.0/5.0)*qt_note);
+// spork ~ generativeMode("/taiko/whole_note", E, gt.LZ, 4 * qt_note);
+// spork ~ generativeMode("/taiko/qt_note_quintuplet", C, gt.RZ, (2.0/5.0)*qt_note);
 
 /* player 2 */
 spork ~ generativeMode("/taiko/qt_note", A, gt.LZ, qt_note);

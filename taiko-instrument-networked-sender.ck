@@ -1,5 +1,5 @@
 // destination host name
-["localhost"] @=> string hostnames[];
+["localhost", "kimchi.local"] @=> string hostnames[];
 // destination port number
 6449 => int port;
 
@@ -8,7 +8,7 @@
 // if( me.args() > 1 ) me.arg(1) => Std.atoi => port;
 
 // sender object
-1 => int NUM_RECEIVERS;
+2 => int NUM_RECEIVERS;
 OscOut xmits[NUM_RECEIVERS];
 
 // aim the transmitter at destination

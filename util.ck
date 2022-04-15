@@ -2,6 +2,12 @@
 
 public class Util {  
 
+    fun static void patch_to_dac(int num_chan, UGen @ u) {
+        for (int i; i < num_chan; i++) {
+            u => dac.chan(i);
+        }
+    }
+
     /* ============ Pitch/Freq ============ */
         // JI Intervals
     16./15. => static float m2;
@@ -35,6 +41,10 @@ public class Util {
 
 
     /* ============ Vector Math ============ */
+
+    fun static int approx(float a, float b) {  // float equality
+        return Std.fabs(a - b) < .00001;
+    }
 
     /* ============ Interpolators ============ */
     fun static float lerp(float a, float b, float t) {
