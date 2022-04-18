@@ -80,11 +80,19 @@ r_voice_gain => r_chorus;
 // TODO: try walking in circle choreo!
 
 // left joystick
-create_granulator("./Samples/Field/thunder.wav", "field", l_field_gain) @=> Granulator l_granulator;
+// create_granulator("./Samples/Field/thunder.wav", "field", l_field_gain) @=> Granulator l_granulator;
+// create_granulator("./Samples/Field/birds.wav", "field", l_field_gain) @=> Granulator l_granulator;
+// create_granulator("./Samples/Field/bumblebees.wav", "field", l_field_gain) @=> Granulator l_granulator;
+create_granulator("./Samples/Field/frozen-pond.wav", "field", l_field_gain) @=> Granulator l_granulator;
+
 create_granulator("./Samples/Drones/male-choir.wav", "drone", l_voice_gain) @=> Granulator l_voice;
 
 // right joystick
-create_granulator("./Samples/Field/beach-with-people.wav", "field", r_field_gain) @=> Granulator r_granulator;
+// create_granulator("./Samples/Field/beach-with-people.wav", "field", r_field_gain) @=> Granulator r_granulator;
+// create_granulator("./Samples/Field/spring-rain.wav", "field", r_field_gain) @=> Granulator r_granulator;
+// create_granulator("./Samples/Field/footsteps-on-grass.wav", "field", r_field_gain) @=> Granulator r_granulator;
+create_granulator("./Samples/Field/wind.wav", "field", r_field_gain) @=> Granulator r_granulator;
+
 create_granulator("./Samples/Drones/female-choir.wav", "drone", r_voice_gain) @=> Granulator r_voice;
 
 // granulator config
