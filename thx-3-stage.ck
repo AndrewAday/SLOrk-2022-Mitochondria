@@ -5,12 +5,12 @@
 .99 => float stage2end;
 
 // how long stage 2 needs to be held before forcing stage3
-2::second => dur stage2holdThreshold;
+6.5::second => dur stage2holdThreshold;
 0::second => dur stage2consecutiveHold; 
-2::second => dur stage3lerpTime;  // how long to resolve from stage2 --> stage3
+10::second => dur stage3lerpTime;  // how long to resolve from stage2 --> stage3
 
-// 6 => int NUM_CHANNELS;
-2 => int NUM_CHANNELS;
+6 => int NUM_CHANNELS;
+// 2 => int NUM_CHANNELS;
 
 150.0 => float maxDist; // max hand distance = 100%
 .7 => float maxGain;
@@ -455,7 +455,7 @@ chout <= "=========begin phase 2=========" <= IO.newline();
 
 // phase 2 instrument.
 
-phase2();
+// phase2();
 
 fun void phase2() {
   // phase2 presets

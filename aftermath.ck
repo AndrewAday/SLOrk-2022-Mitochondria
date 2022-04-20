@@ -10,7 +10,8 @@ GameTrack gt;
 gt.init(0);
 
 // signal flow
-2 => int NUM_CHANNELS;
+// 2 => int NUM_CHANNELS;
+6 => int NUM_CHANNELS;
 Gain main_gain;
 Util.patch_to_dac(NUM_CHANNELS, main_gain);
 
@@ -80,18 +81,18 @@ r_voice_gain => r_chorus;
 // TODO: try walking in circle choreo!
 
 // left joystick
-// create_granulator("./Samples/Field/thunder.wav", "field", l_field_gain) @=> Granulator l_granulator;
+create_granulator("./Samples/Field/thunder.wav", "field", l_field_gain) @=> Granulator l_granulator;
 // create_granulator("./Samples/Field/birds.wav", "field", l_field_gain) @=> Granulator l_granulator;
 // create_granulator("./Samples/Field/bumblebees.wav", "field", l_field_gain) @=> Granulator l_granulator;
-create_granulator("./Samples/Field/frozen-pond.wav", "field", l_field_gain) @=> Granulator l_granulator;
+// create_granulator("./Samples/Field/frozen-pond.wav", "field", l_field_gain) @=> Granulator l_granulator;
 
 create_granulator("./Samples/Drones/male-choir.wav", "drone", l_voice_gain) @=> Granulator l_voice;
 
 // right joystick
-// create_granulator("./Samples/Field/beach-with-people.wav", "field", r_field_gain) @=> Granulator r_granulator;
+create_granulator("./Samples/Field/beach-with-people.wav", "field", r_field_gain) @=> Granulator r_granulator;
 // create_granulator("./Samples/Field/spring-rain.wav", "field", r_field_gain) @=> Granulator r_granulator;
 // create_granulator("./Samples/Field/footsteps-on-grass.wav", "field", r_field_gain) @=> Granulator r_granulator;
-create_granulator("./Samples/Field/wind.wav", "field", r_field_gain) @=> Granulator r_granulator;
+// create_granulator("./Samples/Field/wind.wav", "field", r_field_gain) @=> Granulator r_granulator;
 
 create_granulator("./Samples/Drones/female-choir.wav", "drone", r_voice_gain) @=> Granulator r_voice;
 
@@ -133,12 +134,12 @@ fun void assign_voice_freqs(int which, Granulator @ voice) {
 
 
 /*========== Gametrack granulation control fns ========*/
-.025 => float GT_Z_DEADZONE;
+.015 => float GT_Z_DEADZONE;
 1.0 => float GT_Z_COMPRESSION;
 
 fun float get_grain_pos(float z) {  // maps z to [0,1]
-  return z;
-  // ( z - GT_Z_DEADZONE ) * GT_Z_COMPRESSION + Math.random2f(0,.0001) => float pos;
+  return Math.max(0, ( z - GT_Z_DEADZONE ));
+  // Math.max(0, ( z - GT_Z_DEADZONE )) * GT_Z_COMPRESSION + Math.random2f(0,.0001) => float pos;
 }
 
 fun dur get_field_grain_size(float x) {
@@ -158,9 +159,9 @@ fun float get_grain_gain(float z) {
 }
 
 // controls granular synthesis mapping to gametrak, + cross fade to voice
-.025 => float Z_DEADZONE_CUTOFF;
-.35 => float Z_BEGIN_VOICE;
-.5 => float Z_VOICE_MAX;
+GT_Z_DEADZONE => float Z_DEADZONE_CUTOFF;
+.27 => float Z_BEGIN_VOICE;
+.48 => float Z_VOICE_MAX;
 fun void field_voice_crossfader( 
   int x, int y, int z, 
   Granulator @ granulator, Gain @ field_gain,
@@ -179,8 +180,12 @@ fun void field_voice_crossfader(
     // z axis silent deadzone
     if (gt.curAxis[z] < Z_DEADZONE_CUTOFF) {
       0 => voice_gain.gain;
-      Util.clamp01(Util.remap(.0, Z_DEADZONE_CUTOFF, 0, 1, gt.curAxis[z])) => field_gain.gain;
+      0 => field_gain.gain;
+      // Util.clamp01(Util.remap(0, Z_DEADZONE_CUTOFF, 0, 0, gt.curAxis[z])) => field_gain.gain;
     } else if (gt.curAxis[z] >= Z_DEADZONE_CUTOFF && gt.curAxis[z] < Z_BEGIN_VOICE) {
+      // map field gain from  [cutoff, begin_voice] --> [0, 1]
+      Util.clamp01(Util.remap(Z_DEADZONE_CUTOFF, Z_BEGIN_VOICE, 0, 1, gt.curAxis[z])) => field_gain.gain;
+      // <<< field_gain.gain() >>>;
       // hold field sample at gain = 1, voice at gain = 0
       if (in_voice_region) {
         // exiting voice region
