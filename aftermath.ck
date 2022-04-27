@@ -23,6 +23,8 @@ Chorus l_chorus, r_chorus;
 NRev rev => Echo e1 => Echo e2 => main_gain;
 l_chorus => rev; r_chorus => rev;
 
+// patch both rev and echo to main_gain.
+// patching rev allows the undelayed signal to pass through
 rev => main_gain;
 
 // echo settings

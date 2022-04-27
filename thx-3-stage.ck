@@ -5,12 +5,16 @@
 .99 => float stage2end;
 
 // how long stage 2 needs to be held before forcing stage3
-6.5::second => dur stage2holdThreshold;
-0::second => dur stage2consecutiveHold; 
-10::second => dur stage3lerpTime;  // how long to resolve from stage2 --> stage3
+// 6.5::second => dur stage2holdThreshold;
+// 10::second => dur stage3lerpTime;  // how long to resolve from stage2 --> stage3
 
-6 => int NUM_CHANNELS;
-// 2 => int NUM_CHANNELS;
+0::second => dur stage2consecutiveHold; 
+
+1::second => dur stage2holdThreshold;
+1::second => dur stage3lerpTime;  // how long to resolve from stage2 --> stage3
+
+// 6 => int NUM_CHANNELS;
+2 => int NUM_CHANNELS;
 
 150.0 => float maxDist; // max hand distance = 100%
 .7 => float maxGain;
@@ -255,7 +259,9 @@ fun void update_all_voice_params(float percentage) {
     ((1.0 - percentage) * .75) + .10 => fcDepth;  // inverse scale fc mod depth
 
     // main lp
-    1.5 * percentage * (5400) + 400 => mainLPF.freq;
+    // 1.5 * percentage * (5400) + 400 => mainLPF.freq;
+    1.5 * percentage * (5400) + 1500 => mainLPF.freq;
+    <<< mainLPF.freq() >>>;
 
 
     // effects mod
@@ -320,7 +326,6 @@ while (true) {
   } else {  // past stage 2
     if (inStage2) {
       20::ms +=> stage2consecutiveHold;
-      <<< stage2consecutiveHold >>>;
     }
     if (!inStage2) {
       <<< "entered stage2 resolution!" >>>;
@@ -388,8 +393,8 @@ fun void stage4() {
 
     // remap pitch
     Util.clamp01(Util.invLerp(maxZHeight, resHeight, gt.GetCombinedZ())) => float t;
-    <<< t >>>;
-    <<< gt.GetCombinedZ() >>>;
+    // <<< t >>>;
+    // <<< gt.GetCombinedZ() >>>;
 
     Util.printLerpProgress(t);
 
@@ -451,31 +456,140 @@ chout <= "=========end phase 1=========" <= IO.newline();
 
 5::second => now;
 
-chout <= "=========begin phase 2=========" <= IO.newline();
 
 // phase 2 instrument.
 
-// phase2();
+phase2();
+
+false => int final_stage;
+
+// heartbeat pattern
+fun void end_heartbeat() {
+  while (true) {
+    if (!final_stage) {
+      10::ms => now;
+      continue;
+    }
+
+    td.play_heartbeat_pattern(td.bpm_to_qt_note(60.0), E[3], E[3], 1);
+  }
+} 
+
 
 fun void phase2() {
+  chout <= "=========begin phase 2=========" <= IO.newline();
   // phase2 presets
     // re-nable filter sweeping
   .85 => fcDepth;
     // set voices gains
-  set_all_voice_gains(.4);
+  set_all_voice_gains(0.0);
     // set mod effects
   .8 => chorus.mix;
-  1 => rev.mix;  // HIGH reverb 
+  .5 => rev.mix;  // HIGH reverb 
     // echoes
   500::ms => e1.max => e1.delay;
   1000::ms => e2.max => e2.delay;
   .6 => e1.gain;
   .4 => e2.gain;
+    // main LPF
+  400 => mainLPF.freq;
+
+  // interaction constants
+  .6 => float  MAX_Z;  // everything in final state at this height
+  .015 => float GT_Z_DEADZONE;
   
   patch_to_hemi(e2);  // connect echo to dac
 
+  spork ~ end_heartbeat();  // heartbeat listener
   
-  /*
+  // set initial state pitch
+  C4 / 8.0 => float C1;
+  G3 / 4.0 => float G1;
+  C1 * 2.0 => float C2;
+  E3 / 2.0 => float E2;
+  G1 * 2.0 => float G2;
+
+
+  // initialize voice freqs
+  set_all_voice_freqs(G1);
+
+  0.0 => float left_percentage;  // tracking z axis progress
+  0.0 => float right_percentage;  // tracking z axis progress
+  while (true) {
+    gt.curAxis[gt.LZ] => float left_z;
+    gt.curAxis[gt.RZ] => float right_z;
+
+    if (left_z < GT_Z_DEADZONE) {
+        0.0 => left_percentage;
+    } else {
+        Util.clamp01(gt.invLerp(GT_Z_DEADZONE, MAX_Z, left_z)) => left_percentage;
+    }
+
+    if (right_z < GT_Z_DEADZONE) {
+        0.0 => right_percentage;
+    } else {
+        Util.clamp01(gt.invLerp(GT_Z_DEADZONE, MAX_Z, right_z)) => right_percentage;
+    }
+
+    // lerp pitch
+    Util.lerp(G1, C1, left_percentage) => float l_freq;
+    set_range_voice_freqs(l_freq, 0, 5);
+    Util.lerp(G1, C2, right_percentage) => float r_freq;
+    set_range_voice_freqs(r_freq, 5, numVoices);
+
+    // lerp gain
+    Util.lerp(0.0, .6, left_percentage) => float l_gain;
+    Util.lerp(0.0, .6, right_percentage) => float r_gain;
+    set_range_voice_gains(l_gain, 0, 5);
+    set_range_voice_gains(r_gain, 5, numVoices);
+
+    // lerp FC (maybe not, too aggressive?)
+    Util.lerp(400, 10000, .5 * (left_percentage + right_percentage)) => float lp_cutoff;
+    // Util.lerp(10000.0, 400, .5 * (left_percentage + right_percentage)) => float lp_cutoff;
+    lp_cutoff => mainLPF.freq;
+
+    // reintroduce heartbeat
+    if (left_percentage >= .99 && right_percentage >= .99) {
+      true => final_stage;
+    } else {
+      false => final_stage;
+    }
+
+    10::ms => now;
+  }
+}
+
+fun void set_all_voice_freqs( float f )  {
+  for (0 => int i; i < numVoices; i++) {
+      f => voices[i].freq;
+  }
+}
+
+fun void set_range_voice_freqs(float f, int start, int end) {
+  for (start => int i; i < end; i++) {
+      f => voices[i].freq;
+  }
+}
+
+fun void set_range_voice_gains(float g, int start, int end) {
+  for (start => int i; i < end; i++) {
+      g => gains[i].gain;
+  }
+}
+
+
+fun void set_all_voice_gains_random(float g) {
+  for (0 => int i; i < numVoices; i++) {
+      Math.random2f(g*.7, g*1.3) => gains[i].gain;
+  }
+}
+
+
+
+
+
+// random ideas
+ /*
     continuous pitch
       smoothed pitch interpolation?
       different lerp rates for the 9 voices?
@@ -508,31 +622,3 @@ fun void phase2() {
       - might be too much, keep it simple and preserve the single-line melodic quality 
 
   */
-  while (true) {
-
-    // z axis pitch
-    Util.remap(0, 1, D3, D3 * 2, gt.curAxis[gt.LZ]) => float freq;
-    set_all_voice_freqs(freq);
-
-    // y axis gain
-    Util.remap(-1, 1, 0, .4, gt.curAxis[gt.LY]) => float gain;
-    set_all_voice_gains(gain);
-
-    10::ms => now;
-  }
-
-}
-
-fun void set_all_voice_freqs( float f )  {
-  for (0 => int i; i < numVoices; i++) {
-      f => voices[i].freq;
-  }
-}
-
-
-fun void set_all_voice_gains_random(float g) {
-  for (0 => int i; i < numVoices; i++) {
-      Math.random2f(g*.7, g*1.3) => gains[i].gain;
-  }
-}
-
