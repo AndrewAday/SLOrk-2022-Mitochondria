@@ -13,8 +13,8 @@
 1::second => dur stage2holdThreshold;
 1::second => dur stage3lerpTime;  // how long to resolve from stage2 --> stage3
 
-// 6 => int NUM_CHANNELS;
-2 => int NUM_CHANNELS;
+6 => int NUM_CHANNELS;
+// 2 => int NUM_CHANNELS;
 
 150.0 => float maxDist; // max hand distance = 100%
 .7 => float maxGain;
@@ -261,7 +261,7 @@ fun void update_all_voice_params(float percentage) {
     // main lp
     // 1.5 * percentage * (5400) + 400 => mainLPF.freq;
     1.5 * percentage * (5400) + 1500 => mainLPF.freq;
-    <<< mainLPF.freq() >>>;
+    // <<< mainLPF.freq() >>>;
 
 
     // effects mod
@@ -538,10 +538,17 @@ fun void phase2() {
     set_range_voice_freqs(r_freq, 5, numVoices);
 
     // lerp gain
-    Util.lerp(0.0, .6, left_percentage) => float l_gain;
-    Util.lerp(0.0, .6, right_percentage) => float r_gain;
-    set_range_voice_gains(l_gain, 0, 5);
-    set_range_voice_gains(r_gain, 5, numVoices);
+    // Util.lerp(0.0, .6, left_percentage) => float l_gain;
+    // Util.lerp(0.0, .6, right_percentage) => float r_gain;
+    .5 * left_percentage * left_percentage => float l_gain;
+    .5 * right_percentage * right_percentage => float r_gain;
+    // set_range_voice_gains(l_gain, 0, 5);
+    // set_range_voice_gains(r_gain, 5, numvoices);
+
+    set_range_voice_gains(l_gain, 0, 2);
+    set_range_voice_gains(r_gain, 2, 4); 
+    
+    // TODO: replace with pretty squre wave drone
 
     // lerp FC (maybe not, too aggressive?)
     Util.lerp(400, 10000, .5 * (left_percentage + right_percentage)) => float lp_cutoff;
