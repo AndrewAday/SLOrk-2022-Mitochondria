@@ -5,18 +5,19 @@
 .99 => float stage2end;
 
 // how long stage 2 needs to be held before forcing stage3
-// 6.5::second => dur stage2holdThreshold;
-// 10::second => dur stage3lerpTime;  // how long to resolve from stage2 --> stage3
+6.5::second => dur stage2holdThreshold;
+10::second => dur stage3lerpTime;  // how long to resolve from stage2 --> stage3
 
 0::second => dur stage2consecutiveHold; 
 
-1::second => dur stage2holdThreshold;
-1::second => dur stage3lerpTime;  // how long to resolve from stage2 --> stage3
+// 1::second => dur stage2holdThreshold;
+// 1::second => dur stage3lerpTime;  // how long to resolve from stage2 --> stage3
 
-6 => int NUM_CHANNELS;
-// 2 => int NUM_CHANNELS;
+// 6 => int NUM_CHANNELS;
+2 => int NUM_CHANNELS;
 
-150.0 => float maxDist; // max hand distance = 100%
+//150.0 => float maxDist; // max hand distance = 100%
+130.0 => float maxDist; // max hand distance = 100%
 .7 => float maxGain;
 
 293.0 => float tonic;  // middle D
@@ -273,6 +274,7 @@ fun void update_all_voice_params(float percentage) {
 while (true) {
   gt.GetXZPlaneHandDist() => float handDist;
   // <<< "handDist: ", handDist >>>;
+  <<< "height", gt.GetCombinedZ() >>>;
   Util.clamp01(gt.invLerp(0, maxDist, handDist)) => float percentage;
 
   // stage enter/exit events booleans
@@ -385,9 +387,12 @@ chout <= "=========stage 4=========" <= IO.newline();
 stage4();
 
 fun void stage4() {
-  1.15 => float resHeight;
-  .95 => float fadeHeight;
+  // 1.15 => float resHeight;
+  // .95 => float fadeHeight;
+  .55 => float resHeight;
+  .30 => float fadeHeight;
   while (true) {
+    <<< gt.GetCombinedZ() >>>;
     // lerp height to volume
     // maxGain * Util.clamp01(Util.invLerp(.1, maxZHeight, gt.GetCombinedZ())) => float newGain;
 
