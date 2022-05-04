@@ -13,8 +13,8 @@
 // 1::second => dur stage2holdThreshold;
 // 1::second => dur stage3lerpTime;  // how long to resolve from stage2 --> stage3
 
-// 6 => int NUM_CHANNELS;
-2 => int NUM_CHANNELS;
+6 => int NUM_CHANNELS;
+// 2 => int NUM_CHANNELS;
 
 //150.0 => float maxDist; // max hand distance = 100%
 130.0 => float maxDist; // max hand distance = 100%
@@ -162,6 +162,7 @@ patch_to_hemi(rev);
 /* .0 => drive.mix; */
 
 400 => mainLPF.freq;
+.9 => mainLPF.gain;
 
 .0 => rev.mix;
 
@@ -193,6 +194,8 @@ for (0 => int i; i < numVoices; i++) {
     // OR split each voice into 6 gains, each feeding into a speaker
       // as hands widen, ramp all to full gain
 }
+
+// nice_thx();
 
 
 fun void set_all_voice_gains(float g) {
@@ -261,7 +264,7 @@ fun void update_all_voice_params(float percentage) {
 
     // main lp
     // 1.5 * percentage * (5400) + 400 => mainLPF.freq;
-    1.5 * percentage * (5400) + 1500 => mainLPF.freq;
+    1.5 * percentage * (5400) + 1400 => mainLPF.freq;
     // <<< mainLPF.freq() >>>;
 
 
@@ -274,8 +277,9 @@ fun void update_all_voice_params(float percentage) {
 while (true) {
   gt.GetXZPlaneHandDist() => float handDist;
   // <<< "handDist: ", handDist >>>;
-  <<< "height", gt.GetCombinedZ() >>>;
+  // <<< "height", gt.GetCombinedZ() >>>;
   Util.clamp01(gt.invLerp(0, maxDist, handDist)) => float percentage;
+  // <<< "percentage: ", percentage >>>;
 
   // stage enter/exit events booleans
   if (!(percentage >= stage1end && percentage <= stage2start)) {
@@ -389,10 +393,10 @@ stage4();
 fun void stage4() {
   // 1.15 => float resHeight;
   // .95 => float fadeHeight;
-  .55 => float resHeight;
+  .6 => float resHeight;
   .30 => float fadeHeight;
   while (true) {
-    <<< gt.GetCombinedZ() >>>;
+    // <<< gt.GetCombinedZ() >>>;
     // lerp height to volume
     // maxGain * Util.clamp01(Util.invLerp(.1, maxZHeight, gt.GetCombinedZ())) => float newGain;
 
@@ -459,7 +463,7 @@ fun void stage4() {
 
 chout <= "=========end phase 1=========" <= IO.newline();
 
-5::second => now;
+10::second => now;
 
 
 // phase 2 instrument.
@@ -478,11 +482,29 @@ fun void end_heartbeat() {
 
     td.play_heartbeat_pattern(td.bpm_to_qt_note(60.0), E[3], E[3], 1);
   }
-} 
+}
+
+
 
 
 fun void phase2() {
   chout <= "=========begin phase 2=========" <= IO.newline();
+  
+  disconnect_thx();
+
+  Gain l_voice_gain => rev; 0 => l_voice_gain.gain;
+  Gain r_voice_gain => rev; 0 => r_voice_gain.gain;
+
+  // also try wtx
+  // create_granulator("./Samples/Drones/tpl-organ.wav", l_voice_gain) @=> Granulator l_voice;
+  // create_granulator("./Samples/Drones/tpl-organ.wav", r_voice_gain) @=> Granulator r_voice;
+  create_granulator("./Samples/Drones/wtx-1.wav", l_voice_gain) @=> Granulator l_voice;
+  create_granulator("./Samples/Drones/wtx-1.wav", r_voice_gain) @=> Granulator r_voice;
+
+  // set octave lower
+  .5 => l_voice.GRAIN_PLAY_RATE;
+
+  /*
   // phase2 presets
     // re-nable filter sweeping
   .85 => fcDepth;
@@ -494,16 +516,21 @@ fun void phase2() {
     // echoes
   500::ms => e1.max => e1.delay;
   1000::ms => e2.max => e2.delay;
-  .6 => e1.gain;
-  .4 => e2.gain;
+  .5 => e1.gain;
+  .3 => e2.gain;
     // main LPF
   400 => mainLPF.freq;
+  */
 
   // interaction constants
-  .6 => float  MAX_Z;  // everything in final state at this height
-  .015 => float GT_Z_DEADZONE;
+  .55 => float  MAX_Z;  // everything in final state at this height
+  .025 => float GT_Z_DEADZONE;
   
-  patch_to_hemi(e2);  // connect echo to dac
+  // patch_to_hemi(e2);  // connect echo to dac
+
+  // <<< "patching nice" >>>;
+  // nice_thx();
+  // <<< "patched nice" >>>;
 
   spork ~ end_heartbeat();  // heartbeat listener
   
@@ -516,7 +543,7 @@ fun void phase2() {
 
 
   // initialize voice freqs
-  set_all_voice_freqs(G1);
+  // set_all_voice_freqs(G1);
 
   0.0 => float left_percentage;  // tracking z axis progress
   0.0 => float right_percentage;  // tracking z axis progress
@@ -537,10 +564,14 @@ fun void phase2() {
     }
 
     // lerp pitch
-    Util.lerp(G1, C1, left_percentage) => float l_freq;
-    set_range_voice_freqs(l_freq, 0, 5);
-    Util.lerp(G1, C2, right_percentage) => float r_freq;
-    set_range_voice_freqs(r_freq, 5, numVoices);
+    // Util.lerp(G1, C1, left_percentage) => float l_freq;
+    // set_range_voice_freqs(l_freq, 0, 5);
+    // Util.lerp(G1, C2, right_percentage) => float r_freq;
+    // set_range_voice_freqs(r_freq, 5, numVoices);
+
+      // nice pitch
+    // l_freq => nice_voices[0].freq;
+    // r_freq => nice_voices[1].freq;
 
     // lerp gain
     // Util.lerp(0.0, .6, left_percentage) => float l_gain;
@@ -550,15 +581,24 @@ fun void phase2() {
     // set_range_voice_gains(l_gain, 0, 5);
     // set_range_voice_gains(r_gain, 5, numvoices);
 
-    set_range_voice_gains(l_gain, 0, 2);
-    set_range_voice_gains(r_gain, 2, 4); 
-    
-    // TODO: replace with pretty squre wave drone
+    l_gain => l_voice_gain.gain;
+    r_gain => r_voice_gain.gain;
 
+    // grain pos (remap to [0,.5] to prevent clipping at edge of sample)
+    left_percentage * .5 => l_voice.GRAIN_POSITION; 
+    right_percentage * .5 => r_voice.GRAIN_POSITION;
+
+      // evil thx gain
+    // set_range_voice_gains(l_gain, 0, 2);
+    // set_range_voice_gains(r_gain, 2, 4); 
+      // nice gain
+    // l_gain => nice_gains[0].gain;
+    // r_gain => nice_gains[1].gain;
+    
     // lerp FC (maybe not, too aggressive?)
-    Util.lerp(400, 10000, .5 * (left_percentage + right_percentage)) => float lp_cutoff;
+    // Util.lerp(400, 10000, .5 * (left_percentage + right_percentage)) => float lp_cutoff;
     // Util.lerp(10000.0, 400, .5 * (left_percentage + right_percentage)) => float lp_cutoff;
-    lp_cutoff => mainLPF.freq;
+    // lp_cutoff => mainLPF.freq;
 
     // reintroduce heartbeat
     if (left_percentage >= .99 && right_percentage >= .99) {
@@ -567,8 +607,12 @@ fun void phase2() {
       false => final_stage;
     }
 
-    10::ms => now;
+    20::ms => now;
   }
+}
+
+fun void disconnect_thx() {
+  mainLPF =< rev;
 }
 
 fun void set_all_voice_freqs( float f )  {
@@ -595,6 +639,18 @@ fun void set_all_voice_gains_random(float g) {
       Math.random2f(g*.7, g*1.3) => gains[i].gain;
   }
 }
+
+
+fun Granulator create_granulator(string filepath, UGen @ out) {
+  Granulator drone;
+  drone.init(filepath, out);
+
+  spork ~ drone.granulate();
+
+  return drone;
+}
+
+
 
 
 
